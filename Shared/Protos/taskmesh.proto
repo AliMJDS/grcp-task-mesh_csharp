@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package taskmesh;
+
+option csharp_namespace = "GrpcTaskMesh.Protos";
+
+service TaskOrchestrator {
+  // Client streams TaskInput; server streams FinalResult back
+  rpc StreamTasks (stream TaskInput) returns (stream FinalResult);
+}
+
+service Preprocessor {
+  rpc Process (stream TaskInput) returns (stream PreprocessedChunk);
+}
+
+service NlpAnalyzer {
+  rpc Analyze (stream PreprocessedChunk) returns (stream NlpResult);
+}
+
+service RiskScorer {
+  rpc Score (stream NlpResult) returns (stream RiskScore);
+}
+
+service Validator {
+  rpc Validate (stream NlpResult) returns (stream ValidationResult);
+}
+
+service Aggregator {
+  rpc Aggregate (stream AggregationInput) returns (FinalResult);
+}
+
+// ------------ Messages ------------
+
+message TaskInput {
+  string task_id = 1;
+  string payload = 2; // e.g., document text, JSON, etc.
+}
+
+message PreprocessedChunk {
+  string task_id = 1;
+  string content = 2; // e.g., cleaned/normalized text
+}
+
+message NlpResult {
+  string task_id = 1;
+  repeated string keywords = 2;
+  string sentiment = 3;
+}
+
+message RiskScore {
+  string task_id = 1;
+  float score = 2;
+}
+
+message ValidationResult {
+  string task_id = 1;
+  bool is_valid = 2;
+}
+
+// Union-like wrapper for Aggregator input.
+message AggregationInput {
+  string task_id = 1;
+  oneof input {
+    RiskScore risk_score = 2;
+    ValidationResult validation = 3;
+  }
+}
+
+message FinalResult {
+  string task_id = 1;
+  string decision = 2; // e.g., "APPROVED", "REJECTED"
+  string notes = 3;    // optional explanation
+} 
